@@ -1,0 +1,173 @@
+include Rules.make
+
+BUILD=release
+OMAPES=INVALIDVAL
+FBDEV=yes
+EGLIMAGE=0
+PM_RUNTIME=yes
+
+ifeq ($(TI_DEVICE),am43xx-evm)
+  OMAPES=9.x
+  TI_PLATFORM=ti43xx
+else ifeq ($(TI_DEVICE),am335x-evm)
+  OMAPES=8.x
+  TI_PLATFORM=ti335x
+else ifeq ($(TI_DEVICE),am37x-evm)
+  OMAPES=5.x
+  TI_PLATFORM=omap3630
+else ifeq ($(TI_DEVICE),beagleboard)
+  OMAPES=5.x
+  TI_PLATFORM=omap3630
+else ifeq ($(TI_DEVICE),am3517-evm)
+  OMAPES=3.x
+  TI_PLATFORM=omap3
+else
+  OMAPES=INVALIDVAL
+  TI_PLATFORM=INVALIDVAL
+endif
+
+# Fallback for standalone cases
+ifeq ($(OMAPES),9.x)
+  TI_PLATFORM=ti43xx
+  INIT_FILE="43xx-demo"
+  KO_PATH="dc_ti43xx_linux"
+else ifeq ($(OMAPES),8.x)
+  TI_PLATFORM=ti335x
+  INIT_FILE="335x-demo"
+  KO_PATH="dc_ti335x_linux"
+else ifeq ($(OMAPES),6.x)
+  TI_PLATFORM=ti81xx
+  INIT_FILE="38xx-demo"
+  KO_PATH="dc_ti81xx_linux"
+else ifeq ($(OMAPES),5.x)
+  TI_PLATFORM=omap3630
+  INIT_FILE="omap-demo"
+  KO_PATH="dc_omapfb3_linux"
+else ifeq ($(OMAPES),3.x)
+  TI_PLATFORM=omap3
+  INIT_FILE="omap-demo"
+  KO_PATH="dc_omapfb3_linux"
+else
+  TI_PLATFORM=INVALIDVAL
+endif
+
+BUILDPATH := "rel"
+ifeq ($(BUILD), debug)
+  BUILDPATH := "dbg"
+endif
+
+GFXLIB_INSTALL_INFOFILE=$(GFX_DEMOS_EXECPATH)/gfxinstallinfo.txt
+
+.PHONY: all_km buildkernel
+.PHONY: clean_km cleankernelmodule
+.PHONY: help_km
+
+all_km: prepare_km buildkernel builddevmem2
+
+buildkernel:
+	@echo "building the sgx kernel modules..."
+	@export FBDEV
+	@export PM_RUNTIME
+
+	$(eval GFX_LIB_SRCPATH=$(shell echo $(GRAPHICS_INSTALL_DIR)"/gfx_"$(BUILDPATH)_"es"$(OMAPES)))
+	@echo $(CSTOOL_PATH):$(PATH)
+	@export KERNELDIR=$(KERNEL_INSTALL_DIR) && \
+	export PATH=$(CSTOOL_PATH):$(PATH) && \
+	export CROSS_COMPILE=$(CSTOOL_PREFIX) && \
+	export ARCH=arm && \
+	make -C $(GFX_KERNMOD_SRCPATH) KERNELDIR=$(KERNEL_INSTALL_DIR) BUILD=$(BUILD) TI_PLATFORM=$(TI_PLATFORM) clean && \
+	make -C $(GFX_KERNMOD_SRCPATH) KERNELDIR=$(KERNEL_INSTALL_DIR) TI_PLATFORM=$(TI_PLATFORM) BUILD=$(BUILD)
+	@echo "copying the sgx kernel modules to appropriate folder..."
+	@cp -rf $(GFX_KERNMOD_SRCPATH)/pvrsrvkm.ko $(GFX_LIB_SRCPATH)/.
+	@cp -rf $(GFX_KERNMOD_SRCPATH)/services4/3rdparty/$(KO_PATH)/omaplfb.ko $(GFX_LIB_SRCPATH)/.
+	@cp -rf $(GFX_KERNMOD_SRCPATH)/services4/3rdparty/bufferclass_ti/bufferclass_ti.ko $(GFX_LIB_SRCPATH)/.
+
+prepare_km:
+  ifeq ($(OMAPES),INVALIDVAL)
+	@echo "Error: OMAPES value not specified (Mandatory value)"
+	@echo "5.x for AM/DM37xx, 8.x for 335x, 9.x for 43xx"
+	@exit 1
+  endif
+	@mkdir -p $(GFX_DEMOS_EXECPATH)
+	@echo $(shell echo $(BUILD)$(OMAPES)) > $(GFXLIB_INSTALL_INFOFILE)
+############################### CLEAN ##################################
+clean_km: cleankernelmodule devmem2clean 
+
+builddevmem2:
+	@echo "building devmem2..."
+	@export PATH=$(CSTOOL_PATH):$(PATH) && \
+		export CROSS_COMPILE=$(CSTOOL_PREFIX) && \
+		make -C $(GFX_DEVMEM2_SRCPATH) clean && make -C $(GFX_DEVMEM2_SRCPATH) && make -C $(GFX_DEVMEM2_SRCPATH) install
+
+devmem2clean:
+	@export PATH=$(CSTOOL_PATH):$(PATH) && \
+		export CROSS_COMPILE=$(CSTOOL_PREFIX) && \
+		make -C $(GFX_DEVMEM2_SRCPATH) clean
+
+cleankernelmodule:
+	@echo "cleaning the sgx kernel modules..."
+	@export KERNELDIR=$(KERNEL_INSTALL_DIR) && \
+		export PATH=$(CSTOOL_PATH):$(PATH) && \
+		export CROSS_COMPILE=$(CSTOOL_PREFIX) && \
+		make -C $(GFX_KERNMOD_SRCPATH) KERNELDIR=$(KERNEL_INSTALL_DIR) BUILD=$(BUILD) clean
+
+############################# INSTALL ##################################
+
+install_km:
+ifeq ($(OMAPES),INVALIDVAL)
+	@echo "OMAPES value not specified (Mandatory value)..Exiting..."
+	exit 1
+endif	
+	@echo
+	@echo "exporting necessary variables and installing..."
+	@echo "########################################################"
+	@echo "Please ensure that PSP Linux kernel is re-built atleast once,"
+	@echo "Please refer online guide for further details."
+	@echo "########################################################"
+	@echo "creating directories..."
+	@mkdir -p $(EXEC_DIR)
+	@mkdir -p $(GFX_LIBRARY_TARGET_PATH)
+	@echo "copying startup files..."
+	@cp $(GFX_PKG_TARGETFS_PATH)/$(INIT_FILE) $(TARGETFS_INSTALL_DIR)/etc/init.d
+	@cp $(GFX_PKG_TARGETFS_PATH)/$(INIT_FILE) $(TARGETFS_INSTALL_DIR)/opt/gfxsdkdemos
+	@chmod 755 $(TARGETFS_INSTALL_DIR)/etc/init.d/$(INIT_FILE)
+	@chmod 755 $(TARGETFS_INSTALL_DIR)/opt/gfxsdkdemos
+
+	@cp $(GFX_PKG_TARGETFS_PATH)/powervr.ini $(TARGETFS_INSTALL_DIR)/etc
+	@cp $(GFX_PKG_TARGETFS_PATH)/devmem2 $(TARGETFS_INSTALL_DIR)/etc/init.d
+	@chmod 755 $(TARGETFS_INSTALL_DIR)/etc/init.d/devmem2
+	@cp $(GFX_PKG_TARGETFS_PATH)/devmem2 $(TARGETFS_INSTALL_DIR)/opt/gfxsdkdemos
+	@chmod 755 $(TARGETFS_INSTALL_DIR)/opt/gfxsdkdemos/devmem2
+	@cp $(GFX_PKG_TARGETFS_PATH)/rc.pvr $(TARGETFS_INSTALL_DIR)/etc/init.d
+	@cp $(GFX_PKG_TARGETFS_PATH)/rc.pvr $(TARGETFS_INSTALL_DIR)/opt/gfxsdkdemos
+#	@echo "installing and adding kernel modules to target file system..."
+#	@export PATH=$(CSTOOL_PATH):$(PATH) && \
+#		export CROSS_COMPILE=$(CSTOOL_PREFIX) && \
+#		./addkernelmodules.sh $(KERNEL_INSTALL_DIR) $(TARGETFS_INSTALL_DIR)
+	
+	@echo "copying user space graphics libraries to target file system..."
+	$(eval GFX_LIB_SRCPATH=$(shell echo $(GRAPHICS_INSTALL_DIR)"/gfx_"$(BUILDPATH)_"es"$(OMAPES)))
+	@cp -rf $(GFX_LIB_SRCPATH) $(GFX_LIBRARY_TARGET_PATH)/.
+       ifeq ($(EGLIMAGE),1)
+	@cp -rf $(GFX_LIB_SRCPATH)/libGLESv2_eglimage.so $(GFX_LIBRARY_TARGET_PATH)/gfx_$(BUILDPATH)_es$(OMAPES)/libGLESv2.so
+	@cp -rf $(GFX_LIB_SRCPATH)/libGLES_CM_eglimage.so $(GFX_LIBRARY_TARGET_PATH)/gfx_$(BUILDPATH)_es$(OMAPES)/libGLES_CM.so
+	@cp -rf $(GFX_LIB_SRCPATH)/libIMGegl_eglimage.so $(GFX_LIBRARY_TARGET_PATH)/gfx_$(BUILDPATH)_es$(OMAPES)/libIMGegl.so
+	@cp -rf $(GFX_LIB_SRCPATH)/libEGL_eglimage.so $(GFX_LIBRARY_TARGET_PATH)/gfx_$(BUILDPATH)_es$(OMAPES)/libEGL.so
+	@cp -rf $(GFX_LIB_SRCPATH)/libglslcompiler_eglimage.so $(GFX_LIBRARY_TARGET_PATH)/gfx_$(BUILDPATH)_es$(OMAPES)/libglslcompiler.so
+       endif
+	@echo "copying install information to target file system..."
+	@cd $(GFX_DEMOS_EXECPATH) && \
+		cp -rf * $(EXEC_DIR)/.
+
+############################# HELP ##################################
+
+help_km:
+	@echo ""
+	@echo "Usage (for build): make BUILD={debug | release} OMAPES={ 5.x | 8.x | 9.x} FBDEV={yes | no} "
+	@echo "Specifying OMAPES is mandatory. BUILD=release by default FBDEV=YES by default"
+	@echo "Usage (for install): make BUILD=(debug | release} OMAPES={ 5.x| 8.x | 9.x} install"
+	@echo "See online Graphics Getting Started Guide for further details."
+	@echo ""
+
+###########################################################################
+

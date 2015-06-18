@@ -1,0 +1,18 @@
+This is a simple example to show use of eglimage extension. This extension is typically used for video streaming.
+This example assumes you have already built the graphics SDK release with SUPPORT_XORG=1 command line option & have the Xorg DRI driver running on your EVM.
+If not, please refer to the user guide for steps on building & running graphics SDK Xorg DRI driver.
+http://processors.wiki.ti.com/index.php/Graphics_SDK_Quick_installation_and_user_guide#Xorg_build
+
+Below are the build/execution instructions for this example -
+
+Build steps 
+=============
+1.Edit the Makefile to set variables for graphics SDK and toolchain paths on your system.
+2.Issue make clean & make commands.
+
+Execution Steps
+=================
+1.Bootup the EVM installed with graphics SDK built using SUPPORT_XORG=1 option.
+2.Follow the steps as mentioned in user guide to get the Xorg DRI driver running.
+http://processors.wiki.ti.com/index.php/Graphics_SDK_Quick_installation_and_user_guide#Xorg_Execution_steps
+3.Run this test app as ./gl2_yuvtex. 

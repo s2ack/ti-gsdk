@@ -1,0 +1,38 @@
+#!/bin/sh
+/etc/init.d/devmem2 0x4A307200 w 0x30003
+/etc/init.d/devmem2 0x4A009220 w 0x70002
+/etc/init.d/devmem2 0x4A004304 w 0xB4F0
+/etc/init.d/devmem2 0x4A009204 w 0x74
+/etc/init.d/devmem2 0x4A009430 w 0x2
+
+BUILDTYPE="$(cat /opt/gfxsdkdemos/gfxinstallinfo.txt)"
+
+echo $BUILDTYPE
+
+  echo "SGX Revision is 120..."
+  if test $BUILDTYPE = "release7.x"
+  then
+    echo "installing 7.x SGX release user libraries"
+    cd /opt/gfxlibraries/gfx_rel_es7.x
+    ./install.sh --no-x
+  else if test $BUILDTYPE = "debug7.x"
+  then
+    echo "installing 7.x SGX debug user libraries"
+    cd /opt/gfxlibraries/gfx_dbg_es7.x
+    ./install.sh --no-x
+  else
+    echo "SGX revision is 121(OMAPES=7.x)  but found incompatible driver..."
+    echo "Notice: Install Stopped..."
+    exit 0
+  fi	
+  fi
+
+if [[ -x /etc/init.d/rc.pvr ]]; then
+	cd /etc/init.d
+        ./rc.pvr start
+fi
+
+#if [[ -x /opt/gfxsdkdemos/ogles ]]; then
+#	cd /opt/gfxsdkdemos/ogles
+#	./rundemos.sh 1
+#fi

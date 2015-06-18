@@ -1,0 +1,155 @@
+#Makefile for SDK generation
+#This is to be included for full builds from toplevel makefile
+#This should be included after Rules.make
+#
+
+SUPPORT_XORG = 0
+OGLESCOMMONBUILDPATH=OGLES/Build/LinuxGeneric
+OGLES2COMMONBUILDPATH=OGLES2/Build/LinuxGeneric
+OVGCOMMONBUILDPATH=OVG/Build/LinuxGeneric
+
+
+ifeq ($(SUPPORT_XORG),1)	
+OGLESCOMMONRELPATH=OGLES/Build/LinuxARMV7/ReleaseX11
+OGLES2COMMONRELPATH=OGLES2/Build/LinuxARMV7/ReleaseX11
+OVGCOMMONRELPATH=OVG/Build/LinuxARMV7/ReleaseX11
+else
+OGLESCOMMONRELPATH=OGLES/Build/LinuxARMV7/ReleaseRaw
+OGLES2COMMONRELPATH=OGLES2/Build/LinuxARMV7/ReleaseRaw
+OVGCOMMONRELPATH=OVG/Build/LinuxARMV7/ReleaseRaw
+endif
+OGLESCOMMONPLATFORMPATH=OGLES/Build/LinuxARMV7
+OGLES2COMMONPLATFORMPATH=OGLES2/Build/LinuxARMV7
+OVGCOMMONPLATFORMPATH=OVG/Build/LinuxARMV7
+
+OGLES_EXEC_DESTPATH=$(GFX_DEMOS_EXECPATH)/ogles
+OGLES2_EXEC_DESTPATH=$(GFX_DEMOS_EXECPATH)/ogles2
+OVG_EXEC_DESTPATH=$(GFX_DEMOS_EXECPATH)/ovg
+
+OGLESDEMOS=$(GFX_OGLES_SDKPATH)/Demos/FilmTV/$(OGLESCOMMONBUILDPATH) \
+		$(GFX_OGLES_SDKPATH)/Demos/EvilSkull/$(OGLESCOMMONBUILDPATH) 
+
+COPYOGLESEXECS=	$(GFX_OGLES_SDKPATH)/Demos/FilmTV/$(OGLESCOMMONRELPATH)/OGLESFilmTV \
+		$(GFX_OGLES_SDKPATH)/Demos/EvilSkull/$(OGLESCOMMONRELPATH)/OGLESEvilSkull 
+
+COPYOGLESPODS= 	$(GFX_OGLES_SDKPATH)/Demos/FilmTV/OGLES/*.pod \
+		$(GFX_OGLES_SDKPATH)/Demos/FilmTV/OGLES/*.pvr 
+
+CLEANOGLESDEMOS=$(GFX_OGLES_SDKPATH)/Demos/FilmTV/$(OGLESCOMMONPLATFORMPATH) \
+		$(GFX_OGLES_SDKPATH)/Demos/EvilSkull/$(OGLESCOMMONPLATFORMPATH)
+
+OGLES2DEMOS=$(GFX_OGLES2_SDKPATH)/Demos/ChameleonMan/$(OGLES2COMMONBUILDPATH) \
+		$(GFX_OGLES2_SDKPATH)/Demos/MagicLantern/$(OGLES2COMMONBUILDPATH)
+
+CLEANOGLES2DEMOS=$(GFX_OGLES2_SDKPATH)/Demos/ChameleonMan/$(OGLES2COMMONPLATFORMPATH) \
+		$(GFX_OGLES2_SDKPATH)/Demos/MagicLantern/$(OGLES2COMMONPLATFORMPATH) 
+
+COPYOGLES2EXECS=$(GFX_OGLES2_SDKPATH)/Demos/ChameleonMan/$(OGLES2COMMONRELPATH)/OGLES2ChameleonMan \
+		$(GFX_OGLES2_SDKPATH)/Demos/MagicLantern/$(OGLES2COMMONRELPATH)/OGLES2MagicLantern 
+
+COPYOGLES2PODS= $(GFX_OGLES2_SDKPATH)/Demos/ChameleonMan/OGLES2/*.pod \
+		$(GFX_OGLES2_SDKPATH)/Demos/MagicLantern/OGLES2/*.pod 
+
+.PHONY: $(OGLESDEMOS) $(COPYOGLESEXECS) $(OGLES2DEMOS) $(COPYOGLES2EXECS) $(CLEANOGLESDEMOS) $(CLEANOGLES2DEMOS) $(COPYOGLESPODS) $(COPYOGLES2PODS)
+.PHONY: oglessdkdemos ogles2sdkdemos copy_sdk all_sdk
+.PHONY: cleanoglesdemos cleanogles2demos cleanexecfolders
+
+all_sdk: cleanexecfolders prepare_sdk oglessdkdemos ogles2sdkdemos
+
+oglessdkdemos: $(OGLESDEMOS) $(COPYOGLESEXECS) $(COPYOGLESPODS)
+
+ogles2sdkdemos: $(OGLES2DEMOS) $(COPYOGLES2EXECS) $(COPYOGLES2PODS)
+
+copy_sdk: $(COPYOGLESEXECS) $(COPYOGLES2EXECS) $(COPYOGLESPODS) $(COPYOGLES2PODS)
+
+prepare_sdk:
+	@echo "copying the SGX libraries to SDK..."
+	@mkdir -p $(GFX_OGLES_REL_LIB_DESTPATH)/Lib
+	@mkdir -p $(GFX_OGLES2_REL_LIB_DESTPATH)/Lib
+	@mkdir -p $(GFX_OVG_REL_LIB_DESTPATH)/Lib
+	@cp $(GFX_LIB_SRCPATH)/*.so $(GFX_OGLES_REL_LIB_DESTPATH)/Lib/.
+	@cp $(GFX_LIB_SRCPATH)/*.a $(GFX_OGLES_REL_LIB_DESTPATH)/Lib/.
+	@cp $(GFX_LIB_SRCPATH)/*.so $(GFX_OGLES2_REL_LIB_DESTPATH)/Lib/.
+	@cp $(GFX_LIB_SRCPATH)/*.a $(GFX_OGLES2_REL_LIB_DESTPATH)/Lib/.
+	@cp $(GFX_LIB_SRCPATH)/*.so $(GFX_OVG_REL_LIB_DESTPATH)/Lib/.
+	@cp $(GFX_LIB_SRCPATH)/*.a $(GFX_OVG_REL_LIB_DESTPATH)/Lib/.
+	@echo "creating demo executable folders..."
+	@mkdir -p $(OGLES_EXEC_DESTPATH)
+	@mkdir -p $(OGLES2_EXEC_DESTPATH)
+	@export SUPPORT_XORG
+ifeq ($(SUPPORT_XORG),1)	
+export X11BUILD=1
+export X11ROOT=$(GFX_PKG_TARGETFS_PATH)/XSGX
+endif
+
+$(OGLESDEMOS):
+	@echo
+	@echo exporting necessary variables and building $@
+	@export LIBDIR=$(GFX_OGLES_REL_LIB_DESTPATH)/Lib && \
+		export PLATFORM=LinuxARMV7 && \
+		export PATH=$(CSTOOL_PATH):$(PATH) && \
+		export CROSS_COMPILE=$(CSTOOL_PREFIX) && \
+		export Common=1 && \
+		make -C $@ clean && \
+		make -C $@
+
+$(OGLES2DEMOS):
+	@echo
+	@echo exporting necessary variables and building $@
+	@export LIBDIR=$(GFX_OGLES2_REL_LIB_DESTPATH)/Lib && \
+		export PLATFORM=LinuxARMV7 && \
+		export PATH=$(CSTOOL_PATH):$(PATH) && \
+		export CROSS_COMPILE=$(CSTOOL_PREFIX) && \
+		export Common=1 && \
+		make -C $@ clean && \
+		make -C $@ 
+
+$(COPYOGLESEXECS):
+	@echo "copy OGLES demo executables...$@"
+	@cp $@ $(OGLES_EXEC_DESTPATH)/.
+
+$(COPYOGLESPODS):
+	@echo "copy OGLES demo dependant files...$@"
+	@cp $@ $(OGLES_EXEC_DESTPATH)/.
+
+$(COPYOGLES2EXECS):
+	@echo "copy OGLES2 demo executables...$@"
+	@cp $@ $(OGLES2_EXEC_DESTPATH)/.
+
+$(COPYOGLES2PODS):
+	@echo "copy OGLES2 demo dependant files...$@"
+	@cp $@ $(OGLES2_EXEC_DESTPATH)/.
+
+############################### CLEAN ##################################
+clean_sdk: cleanoglesdemos cleanogles2demos cleanexecfolders 
+
+cleanoglesdemos: $(CLEANOGLESDEMOS)
+
+cleanogles2demos: $(CLEANOGLES2DEMOS)
+
+$(CLEANOGLESDEMOS):
+	@echo
+	@echo "Removing the LinuxARMV7 directories from OGLES Demos...$@"
+	@rm -rf $@
+
+$(CLEANOGLES2DEMOS):
+	@echo
+	@echo "Removing the LinuxARMV7 directories from OGLES2 Demos...$@"
+	@rm -rf $@
+
+cleanexecfolders:
+	@echo
+	@echo "Removing the graphics sdk demo executables directory..."
+	@rm -rf $(GFX_DEMOS_EXECPATH)/ogles
+	@rm -rf $(GFX_DEMOS_EXECPATH)/ogles2
+
+############################# INSTALL ##################################
+
+install_sdk:
+	@mkdir -p $(EXEC_DIR)
+	@echo "copying graphics SDK demos to target file system..."
+	@cd $(GFX_DEMOS_EXECPATH) && \
+		cp -rf * $(EXEC_DIR)/.
+
+
+###########################################################################

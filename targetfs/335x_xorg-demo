@@ -1,0 +1,29 @@
+#!/bin/sh
+
+
+SGX_REVISION=0x10205
+BUILDTYPE="$(cat /opt/gfxsdkdemos/gfxinstallinfo.txt)"
+
+echo $SGX_REVISION
+echo $BUILDTYPE
+
+  if test $BUILDTYPE = "release8.x"
+  then
+    echo "installing 8.x SGX release user libraries"
+    cd /opt/gfxlibraries/gfx_rel_es8.x
+    ./install.sh
+  else 
+    echo "installing 8.x SGX debug user libraries"
+    cd /opt/gfxlibraries/gfx_dbg_es8.x
+    ./install.sh 
+  fi
+
+if [[ -x /etc/init.d/rc.pvr ]]; then
+	cd /etc/init.d
+        ./rc.pvr start
+fi
+
+#if [[ -x /opt/gfxsdkdemos/ogles ]]; then
+#	cd /opt/gfxsdkdemos/ogles
+#	./rundemos.sh 1
+#fi

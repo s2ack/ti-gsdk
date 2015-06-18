@@ -1,0 +1,34 @@
+From 37068d69c9ad92a58ef658399c0710bc6a65de6a Mon Sep 17 00:00:00 2001
+From: Prathap M S <msprathap@ti.com>
+Date: Thu, 17 Oct 2013 01:46:32 +0530
+Subject: [PATCH] ARM : DTS : AM335x : Add SGX DT node
+
+This adds SGX node to AM335x DT.
+
+Signed-off-by: Prathap M S <msprathap@ti.com>
+---
+ arch/arm/boot/dts/am33xx.dtsi |    8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/arch/arm/boot/dts/am33xx.dtsi b/arch/arm/boot/dts/am33xx.dtsi
+index 4d55ba1..716a0a8 100644
+--- a/arch/arm/boot/dts/am33xx.dtsi
++++ b/arch/arm/boot/dts/am33xx.dtsi
+@@ -822,6 +822,14 @@
+ 			#reset-cells = <1>;
+ 		};
+ 
++		sgx@0x56000000 {
++		compatible = "ti,sgx";
++		ti,hwmods = "gfx";
++		reg = <0x56000000 0x1000000>;
++		interrupts = <37>;
++		resets = <&prcm 0>;
++		};
++
+ 		sham: sham@53100000 {
+ 			compatible = "ti,omap4-sham";
+ 			ti,hwmods = "sham";
+-- 
+1.7.9.5
+
